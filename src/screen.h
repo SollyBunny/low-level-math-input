@@ -1,4 +1,8 @@
+#ifndef INCLUDE_SCREEN_H
+#define INCLUDE_SCREEN_H
+
 #include <stdlib.h>
+#include <bitmap.h>
 
 typedef struct {
     int w;
@@ -58,3 +62,18 @@ void sLine(Screen *s, int x1, int y1, int x2, int y2, char col) {
         }
     }
 }
+
+void sBitmap(Screen *s, int x, int y, Bitmap *b, char col) {
+    for (int y1 = 0; y1 < b->h; ++y1) {
+        unsigned char data = b->data[y1];
+        if (data == 0) continue;
+        unsigned char mask = 0b1;
+        for (int x1 = 0; x < b->w; ++x1, mask <<= 1) {
+            if (data & mask != 0) {
+                sPoint(s, x1 + x, y1 + y, col);
+            }
+        }
+    }
+}
+
+#endif
