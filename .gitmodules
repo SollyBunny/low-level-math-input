@@ -1,0 +1,3 @@
+[submodule "src/font/fontbmutil/src"]
+	path = src/font/fontbmutil/src
+	url = https://github.com/vladimirgamalyan/fontbm.git
