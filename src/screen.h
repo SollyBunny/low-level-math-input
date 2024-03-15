@@ -1,17 +1,20 @@
 #ifndef INCLUDE_SCREEN_H
 #define INCLUDE_SCREEN_H
 
+#include <stdint.h>
 #include <stdlib.h>
+#include <color.h>
 #include <bitmap.h>
 #include <glyph.h>
+#include <font.h>
 
 typedef struct {
-    int w;
-    int h;
-    void (*draw)(int x, int y, char col);
+    uint16_t w;
+    uint16_t h;
+    void (*draw)(int x, int y, uint8_t col);
 } Screen;
 
-Screen *sCreate(int w, int h, void (*draw)(int x, int y, char col)) {
+Screen *sCreate(int w, int h, void (*draw)(int x, int y, Color col)) {
     Screen *s = malloc(sizeof(Screen));
     if (!s) return NULL;
     s->w = w;
@@ -89,10 +92,10 @@ void sGlyph(Screen *s, int *x, int *y, Glyph *g, char col) {
 
 void sText(Screen *s, int *x, int *y, char *text, char col) {
     int ty;
-    int my = y;
+    int my = *y;
     for (/* empty */; *text != '\0'; ++text) {
-        ty = y;
-        sGlyph(s, x, ty, glyphs[*text], col);
+        ty = *y;
+        sGlyph(s, x, &ty, &glyphs[*text], col);
         if (ty > my) my = ty;
     }
     *y = my;
