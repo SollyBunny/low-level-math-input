@@ -1,17 +1,16 @@
 #!/bin/env python3
 
-import os
+from PIL import Image
 
-files = os.listdir()
-files = filter(lambda f: f.endswith(".txt"), files)
-files = list(files)
+with open("out.fnt") as file:
+    data_txt = file.read()
+with Image.open("out_0.png") as img:
+    data_img = img.getdata()
+    data_img_w, data_img_w = img.size
 
-print("Compiling", ", ".join(files))
+data_txt = data_txt.split("\n")
+for line in data_txt:
+    if not line.startswith("char id")
 
-for file in files:
-    data = ""
-    with open(file, "r") as p:
-        data = p.read()
-    print(data)
-    data = data.split("\n")
-    print(data)
+print(data_img[0], data_img_w)
+print(data_txt)
