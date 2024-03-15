@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <bitmap.h>
+#include <glyph.h>
 
 typedef struct {
     int w;
@@ -63,17 +64,38 @@ void sLine(Screen *s, int x1, int y1, int x2, int y2, char col) {
     }
 }
 
-void sBitmap(Screen *s, int x, int y, Bitmap *b, char col) {
+void sBitmap(Screen *s, int *x, int *y, Bitmap *b, char col) {
     for (int y1 = 0; y1 < b->h; ++y1) {
         unsigned char data = b->data[y1];
         if (data == 0) continue;
         unsigned char mask = 0b1;
-        for (int x1 = 0; x < b->w; ++x1, mask <<= 1) {
+        for (int x1 = 0; x1 < b->w; ++x1, mask <<= 1) {
             if (data & mask != 0) {
-                sPoint(s, x1 + x, y1 + y, col);
+                sPoint(s, x1 + *x, y1 + *y, col);
             }
         }
     }
+    *x += b->w;
+    *y += b->h;
+}
+
+void sGlyph(Screen *s, int *x, int *y, Glyph *g, char col) {
+    *x += g->padleft;
+    *y += g->padtop;
+    sBitmap(s, x, y, &g->b, col);
+    *x += g->padright;
+    *y += g->padtop;
+}
+
+void sText(Screen *s, int *x, int *y, char *text, char col) {
+    int ty;
+    int my = y;
+    for (/* empty */; *text != '\0'; ++text) {
+        ty = y;
+        sGlyph(s, x, ty, glyphs[*text], col);
+        if (ty > my) my = ty;
+    }
+    *y = my;
 }
 
 #endif

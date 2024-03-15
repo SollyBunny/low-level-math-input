@@ -1,2 +1,3 @@
 src/font/fontbmutil/build
 src/font/out*
+src/font/*_tmp.txt
