@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+/*
+In hex
+0xRGBA
+*/
 typedef uint16_t Color;
 
 #endif

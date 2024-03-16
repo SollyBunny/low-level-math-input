@@ -39,6 +39,6 @@ with open("font.h", "w") as file:
 {out_defines}
 Glyph glyphs[] = {{
 {out_data}
-}}
+}};
 
 #endif""")

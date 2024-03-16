@@ -2,6 +2,7 @@
 #define INCLUDE_GLYPH_H
 
 #include <stdint.h>
+
 #include <bitmap.h>
 
 typedef struct {
