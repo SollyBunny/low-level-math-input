@@ -6,51 +6,33 @@
 #include <sys/types.h>
 #include <string.h>
 
-#define FIFO_FILE "./serial_bridge.fifo"
+#define FIFO_FILE_IN "./serial_in.fifo"
+#define FIFO_FILE_OUT "./serial_out.fifo"
+
+FILE *fifo_in;
 
 int bTermLines() {
-    int fd;
-    int count = 0;
-    char ch;
-    // Open FIFO for reading
-    if ((fd = open(FIFO_FILE, O_RDONLY | O_NONBLOCK)) < 0) {
-        perror("open");
-        exit(1);
+    long originalPos = ftell(fifo_in);
+    int newlineCount = 0;
+    int c;
+    while ((c = fgetc(fifo_in)) != EOF) {
+        if (c == '\n') ++newlineCount;
     }
-    // Count the number of newline characters ('\n')
-    while (read(fd, &ch, 1) > 0) {
-        if (ch == '\n') {
-            count++;
-        }
-    }
-    close(fd);
-    return count;
+    fseek(fifo_in, originalPos, SEEK_SET); // Move cursor back to original position
+    return newlineCount;
 }
 #undef bLines
 #define bLines bTermLines
 
 char* bTermRead() {
-    int fd;
-    char ch;
-    static char line[1024]; // Assuming max line length of 1024
-    // Open FIFO for reading
-    if ((fd = open(FIFO_FILE, O_RDONLY | O_NONBLOCK)) < 0) {
-        perror("open");
-        exit(1);
+    char *line;
+    ssize_t n = 512;
+    ssize_t res = getline(&line, &n, fifo_in);
+    if (res <= 0) {
+        free(line);
+        return NULL;
     }
-    // Read a line from FIFO
-    int i = 0;
-    while (read(fd, &ch, 1) > 0) {
-        if (ch == '\n') {
-            line[i] = '\0'; // Null terminate the string
-            close(fd);
-            return line;
-        } else {
-            line[i++] = ch;
-        }
-    }
-    close(fd);
-    return NULL; // No line available
+    if (line == NULL) return NULL;
 }
 #undef bRead
 #define bRead bTermRead
@@ -58,7 +40,7 @@ char* bTermRead() {
 void bTermWrite(char* line) {
     int fd;
     // Open FIFO for writing
-    if ((fd = open(FIFO_FILE, O_WRONLY)) < 0) {
+    if ((fd = open(FIFO_FILE_OUT, O_WRONLY)) < 0) {
         perror("open");
         exit(1);
     }
@@ -69,19 +51,34 @@ void bTermWrite(char* line) {
 #undef bWrite
 #define bWrite bTermWrite
 
-void bTermInit() {
-	remove(FIFO_FILE);
-	if (mkfifo(FIFO_FILE, 0666) < 0) {
+void bTermOpenFIFO(const char* path) {
+    struct stat buf;
+    if (stat(path, &buf) != 0) {
+        perror("stat");
+        exit(1);
+    }
+    if (S_ISFIFO(buf.st_mode)) {
+        return;
+    }
+    if (mkfifo(path, 0666) < 0) {
         perror("mkfifo");
+        exit(1);
+    }
+}
+
+void bTermInit() {
+    
+	bTermOpenFIFO(FIFO_FILE_IN);
+    bTermOpenFIFO(FIFO_FILE_OUT);
+    return;
+    if ((fifo_in = fopen(FIFO_FILE_IN, "r")) < 0) {
+        perror("fopen");
         exit(1);
     }
 }
 #undef bInit
 #define bInit bTermInit
 
-void bTermDeinit() {
-	remove(FIFO_FILE);
-	unlink(FIFO_FILE);
-}
+#define bTermDeinit() /* empty */
 #undef bDeinit
 #define bDeinit bTermDeinit

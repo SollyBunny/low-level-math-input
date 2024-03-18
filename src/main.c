@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <time.h>
 
 #ifdef DEVICE_ILI9341
     #include "screen/ILI9341.h"
@@ -17,6 +18,13 @@
 #include "font.h"
 #include "glyph.h"
 
+void msleep(long msec) {
+    struct timespec ts;
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+    nanosleep(&ts, &ts);
+}
+
 int main() {
     bInit();
     printf("%d\n", memcmp(glyphs[CHAR_h], &GLYPH_h, sizeof(GLYPH_h)));
@@ -33,7 +41,18 @@ int main() {
     sText(&x, &y, text);
     sFlush();
     #ifndef DEVICE_ILI9341
-        getchar();
-        sDeinit();
+        // getchar();
+        // sDeinit();
     #endif
+    bWrite("Hello world\n");
+    while (1) {
+        int lines = bLines();
+        if (lines > 0) {
+            sDeinit();
+            printf("%s\n", bRead());
+            exit(1);
+        }
+        msleep(100);
+        bWrite("Hello world\n");
+    }
 }

@@ -3,3 +3,5 @@ src/font/out*
 src/font/*_tmp.txt
 .vscode/
 .vscode/*
+serial*.fifo
+build/serial*.fifo
