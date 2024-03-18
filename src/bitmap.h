@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-typedef struct {
+struct Bitmap {
     uint8_t w;
     uint8_t h;
     uint32_t data[32];
-} Bitmap;
+};
 
 #endif

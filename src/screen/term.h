@@ -1,12 +1,12 @@
-#include <cstdint>
+#include <stdint.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <screen.h>
-#include <color.h>
+#include "../screen.h"
+#include "../color.h"
 
 void sTermFlush() {
     fflush(stdout);
@@ -15,10 +15,10 @@ void sTermFlush() {
 #define sFlush sTermFlush
 
 void sTermColor(Color col) {
-    uint8_t r = (col >> 12) << 4;
-    uint8_t g = ((col & 0x0F00) >> 8) << 4;
-    uint8_t b = ((col & 0x00F0) >> 4) << 4;
-    uint8_t a = 255 - ((col & 0x000F) << 4);
+    uint8_t r = (col >> 12) * 17;
+    uint8_t g = ((col & 0x0F00) >> 8) * 17;
+    uint8_t b = ((col & 0x00F0) >> 4) * 17;
+    uint8_t a = 255 - ((col & 0x000F) * 17);
     r -= a;
     g -= a;
     b -= a;
@@ -34,7 +34,7 @@ void sTermClear() {
 #define sClear sTermClear
 
 void sTermPoint(uint16_t x, uint16_t y) {
-    printf("\x1b[%d;%dH  \x1b[0m", y + 1, x * 2 + 1);
+    printf("\x1b[%d;%dH  ", y + 1, x * 2 + 1);
 }
 #undef sPoint
 #define sPoint sTermPoint
@@ -44,7 +44,7 @@ void sTermIntHandeler(int _) {
     exit(0);
 }
 
-void *sTermInit() {
+void sTermInit() {
     struct winsize win;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &win);
     sWidth = win.ws_col / 2;

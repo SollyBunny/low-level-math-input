@@ -1,23 +1,32 @@
-#ifndef INCLUDE_SCREEN_H
-#define INCLUDE_SCREEN_H
+#ifndef INCLUDE_SCREEN_H_BASIC
+#define INCLUDE_SCREEN_H_BASIC
 
 #include <stdint.h>
 
-#include <glyph.h>
-#include <bitmap.h>
+typedef uint16_t upos;
+typedef int16_t pos;
+typedef uint16_t gchar;
 
-uint16_t sWidth = 0;
-uint16_t sHeight = 0;
+upos sWidth = 0;
+upos sHeight = 0;
+
+#endif
 
 #ifdef sInit
+#ifndef INCLUDE_SCREEN_H_ADV
+#define INCLUDE_SCREEN_H_ADV
+
+#include "font.h"
+#include "glyph.h"
+#include "bitmap.h"
 
 #ifndef sLine
-void sDefaultLine(int x1, int y1, int x2, int y2) {
-    int dx = x2 - x1;
-    int dy = y2 - y1;
+void sDefaultLine(upos x1, upos y1, upos x2, upos y2) {
+    pos dx = x2 - x1;
+    pos dy = y2 - y1;
     if (dy <= dx) {
-        int d = dy - (dx / 2);
-        int x = x1, y = y1;
+        pos d = dy - (dx / 2);
+        upos x = x1, y = y1;
         sPoint(x, y);
         while (x < x2) {
             ++x;
@@ -29,8 +38,8 @@ void sDefaultLine(int x1, int y1, int x2, int y2) {
             sPoint(x, y);
         }
     } else {
-        int d = dx - (dy / 2);
-        int x = x1, y = y1;
+        pos d = dx - (dy / 2);
+        upos x = x1, y = y1;
         sPoint(x, y);
         while (y < y2) { 
             ++y;
@@ -47,15 +56,18 @@ void sDefaultLine(int x1, int y1, int x2, int y2) {
 #endif
 
 #ifndef sBitmap
-void sDefaultBitmap(int *x, int *y, Bitmap *b) {
-    for (int y1 = 0; y1 < b->h; ++y1) {
-        unsigned char data = b->data[y1];
+
+void sDefaultBitmap(upos *x, upos *y, struct Bitmap *b) {
+    for (upos y1 = 0; y1 < b->h; ++y1) {
+        uint32_t data = b->data[y1];
         if (data == 0) continue;
-        unsigned char mask = 0b1;
-        for (int x1 = 0; x1 < b->w; ++x1, mask <<= 1) {
-            if (data & mask != 0) {
+        upos x1 = 0;
+        while (data) {
+            if (data & 1) {
                 sPoint(x1 + *x, y1 + *y);
             }
+            data >>= 1;
+            x1 += 1;
         }
     }
     *x += b->w;
@@ -65,7 +77,9 @@ void sDefaultBitmap(int *x, int *y, Bitmap *b) {
 #endif
 
 #ifndef sGlyph
-void sDefaultGlyph(int *x, int *y, Glyph *g) {
+void sDefaultGlyph(upos *x, upos *y, gchar c) {
+    struct Glyph *g = glyphs[c];
+    if (!g) return;
     *x += g->padleft;
     *y += g->padtop;
     sBitmap(x, y, &g->b);
@@ -76,12 +90,12 @@ void sDefaultGlyph(int *x, int *y, Glyph *g) {
 #endif
 
 #ifndef sText
-void sDefaultText(int *x, int *y, char *text) {
-    int ty;
-    int my = *y;
+void sDefaultText(upos *x, upos *y, gchar *text) {
+    upos ty;
+    upos my = *y;
     for (/* empty */; *text != '\0'; ++text) {
         ty = *y;
-        sGlyph(s, x, &ty, &glyphs[*text]);
+        sGlyph(x, &ty, *text);
         if (ty > my) my = ty;
     }
     *y = my;

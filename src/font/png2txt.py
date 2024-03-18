@@ -12,7 +12,7 @@ data_txt = data_txt.split("\n")
 data_txt = (dict(j.split("=") for j in i.split(" ") if "=" in j) for i in data_txt if i.startswith("char id"))
 out = ""
 for c in data_txt:
-    out += f"{c['name']} {c['width']} {c['height']} {c['xoffset']} {int(c['xadvance']) - int(c['width'])} {c['yoffset']} {0}\n"
+    out += f"{c['name']} {c['id']} {c['width']} {c['height']} {c['xoffset']} {int(c['xadvance']) - int(c['width'])} {c['yoffset']} {0}\n"
     for y in range(int(c["y"]), int(c["y"]) + int(c["height"])):
         line = ""
         for x in range(int(c["x"]), int(c["x"]) + int(c["width"])):

@@ -1,6 +1,6 @@
 build: build_font2png build_png2txt build_txt2src
 
-build_font2png: out.fnt
+build_font2png: out.fnt chars.txt
 out.fnt: *.ttf ./ttf2png.py
 	python ./ttf2png.py
 

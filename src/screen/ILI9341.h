@@ -1,10 +1,10 @@
 #include <stdint.h>
 
-#include <screen.h>
-#include <color.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
 
-#include <Adafruit_GFX.h>       // include Adafruit graphics library
-#include <Adafruit_ILI9341.h>   // include Adafruit ILI9341 TFT library
+#include "../screen.h"
+#include "../color.h"
 
 /*
 ILI9341 Screen pins -> ES32 S3 pins
@@ -33,7 +33,7 @@ T_IRQ
 	#define TFT_DC 4
 #endif
 
-Adafruit_ILI9341 tft;
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 Color tftcolor = 0;
 int tftwritten = 0;
 
@@ -66,16 +66,18 @@ void sILI9341Point(uint16_t x, uint16_t y) {
 #undef sPoint
 #define sPoint sILI9341Point
 
-void *sILI9341Init() {
+void sILI9341Init() {
 	tft.flush();
 	tft.begin();
+	tft.fillScreen(0);
+	tft.flush();
 	tft.startWrite();
 }
 #undef sInit
-#define sInit sTermInit
+#define sInit sILI9341Init
 
-void sTermDeinit() {
+void sILI9341Deinit() {
 	sFlush();
 }
 #undef sDeinit
-#define sDeinit sTermDeinit
+#define sDeinit sILI9341Deinit
