@@ -25,8 +25,7 @@ int bTermLines() {
         return 0;
     }
     static ssize_t bytes_read;
-    bytes_read = read(term_fifo_in, term_buffer, 1);
-    close(term_fifo_in);
+    bytes_read = read(term_fifo_in, term_buffer, TERM_BUFFER_SIZE);
     if (bytes_read < 1) return 0;
     return 1;
 }
@@ -42,7 +41,6 @@ char* bTermRead() {
     }
     static ssize_t bytes_read;
     bytes_read = read(term_fifo_in, term_buffer, TERM_BUFFER_SIZE);
-    close(term_fifo_in);
     if (bytes_read < 1) return NULL;
     return term_buffer;
 }
