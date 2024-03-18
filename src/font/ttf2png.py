@@ -12,7 +12,7 @@ data_chars.sort(key = lambda c: ord(c[1]))
 with open("./chars_tmp.txt", "w") as file:
     file.write("".join(i[1] for i in data_chars))
 
-res = os.system(f"./fontbmutil/fontbm --font-file *.ttf --chars-file chars_tmp.txt --extra-info --output out")
+res = os.system("./fontbmutil/fontbm --font-file *.ttf --chars-file chars_tmp.txt --extra-info --output out")
 if res != "0":
     print(res)
 os.remove("./chars_tmp.txt")

@@ -5,7 +5,6 @@
 
 typedef uint16_t upos;
 typedef int16_t pos;
-typedef uint16_t gchar;
 
 upos sWidth = 0;
 upos sHeight = 0;

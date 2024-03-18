@@ -2,9 +2,10 @@
 
 # Combines everything into a single ino file
 
+import sys
+
 DEFINITIONS = []
 
-import sys
 for arg in sys.argv[1:]:
 	if arg.startswith("-D"):
 		DEFINITIONS.append(arg[2:])

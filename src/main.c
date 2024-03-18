@@ -29,18 +29,24 @@ void msleep(long msec) {
 #define BUFFER_SIZE 1024
 
 int main() {
-    // bInit();
-    printf("hi\n");
-    int i = 0;
+    bInit();
+    sInit();
     while (1) {
-        printf("hi %d\n", i++);
-        bWrite("hi %d\n", i++);
         msleep(100);
         int lines = bLines();
         if (lines > 0) {
-            printf("reading %d\n", lines);
             char *line = bRead();
-            printf("'%s'\n", line);
+            if (!line) continue;
+            bWrite("Writing '%s'\n", line);
+            gchar *gline = gstring(line);
+            sColor(0);
+            sClear();
+            sColor(0x0F0F);
+            upos x = 1;
+            upos y = 1;
+            sText(&x, &y, gline);
+            sFlush();
+            free(gline);
         }
     }
     return 0;
@@ -61,10 +67,6 @@ int a() {
     x = 10;
     sText(&x, &y, text);
     sFlush();
-    #ifndef DEVICE_ILI9341
-        // getchar();
-        // sDeinit();
-    #endif
     bWrite("Hello world\n");
     while (1) {
         int lines = bLines();

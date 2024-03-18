@@ -19,6 +19,18 @@ data_txt = [i.split("\n") for i in data_txt if len(i) > 1]
 data_txt = [[i[0].split(" "), [txt2src(j) for j in i[1:]]] for i in data_txt]
 data_txt = [[i[0][0], int(i[0][1]), [int(j) for j in i[0][2:]], i[1]] for i in data_txt]
 
+# special case
+data_txt.append([
+    "space", ord(" "),
+    [0, 0, int(data_txt[0][2][0]) + int(data_txt[0][2][2]) + int(data_txt[0][2][4]), int(data_txt[0][2][1]) + int(data_txt[0][2][3]) + int(data_txt[0][2][5]), 0, 0],
+    []
+])
+data_txt.append([
+    "tab", ord("\t"),
+    [0, 0, (int(data_txt[0][2][0]) + int(data_txt[0][2][2]) + int(data_txt[0][2][4])) * 4, int(data_txt[0][2][1]) + int(data_txt[0][2][3]) + int(data_txt[0][2][5]), 0, 0],
+    []
+])
+
 out_data = ""
 out_defines = ""
 for c in data_txt:

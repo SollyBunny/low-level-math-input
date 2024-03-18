@@ -16,24 +16,24 @@
 int term_fifo_in, term_fifo_out;
 fd_set term_fifo_in_read_fs;
 #define TERM_BUFFER_SIZE 1024
-char term_buffer[TERM_BUFFER_SIZE];
-
 
 int bTermLines() {
-    if ((term_fifo_in = open(FIFO_FILE_IN, O_RDONLY | O_NONBLOCK)) < 0) {
+    static char term_buffer[TERM_BUFFER_SIZE];
+    if ((term_fifo_in = open(FIFO_FILE_IN, O_RDWR | O_NONBLOCK)) < 0) {
         close(term_fifo_in);
         return 0;
     }
     static ssize_t bytes_read;
     bytes_read = read(term_fifo_in, term_buffer, TERM_BUFFER_SIZE);
     if (bytes_read < 1) return 0;
+    write(term_fifo_in, term_buffer, bytes_read);
     return 1;
 }
 #undef bLines
 #define bLines bTermLines
 
 char* bTermRead() {
-    return NULL;
+    static char term_buffer[TERM_BUFFER_SIZE];
     if ((term_fifo_in = open(FIFO_FILE_IN, O_RDONLY)) < 0) {
         printf("fail\n");
         close(term_fifo_in);
@@ -41,13 +41,16 @@ char* bTermRead() {
     }
     static ssize_t bytes_read;
     bytes_read = read(term_fifo_in, term_buffer, TERM_BUFFER_SIZE);
+    close(term_fifo_in);
     if (bytes_read < 1) return NULL;
+    term_buffer[bytes_read] = '\0';
     return term_buffer;
 }
 #undef bRead
 #define bRead bTermRead
 
 void bTermWrite(char* fmt, ...) {
+    static char term_buffer[TERM_BUFFER_SIZE];
     if ((term_fifo_out = open(FIFO_FILE_OUT, O_WRONLY | O_NONBLOCK)) < 0) {
         return;
     }

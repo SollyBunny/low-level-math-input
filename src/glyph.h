@@ -2,8 +2,21 @@
 #define INCLUDE_GLYPH_H
 
 #include <stdint.h>
+#include <string.h>
 
 #include "bitmap.h"
+
+typedef uint16_t gchar;
+
+gchar* gstring(const char* s) {
+    if (s == NULL) return NULL;
+    long len = strlen(s);
+    gchar* g = malloc(sizeof(gchar) * (len + 1));
+    for (long i = 0; i < len; ++i) {
+        g[i] = s[i];
+    }
+    return g;
+}
 
 struct Glyph {
     uint8_t w;
