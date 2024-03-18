@@ -25,7 +25,28 @@ void msleep(long msec) {
     nanosleep(&ts, &ts);
 }
 
+#define FIFO_NAME FIFO_FILE_IN
+#define BUFFER_SIZE 1024
+
 int main() {
+    // bInit();
+    printf("hi\n");
+    int i = 0;
+    while (1) {
+        printf("hi %d\n", i++);
+        bWrite("hi %d\n", i++);
+        msleep(100);
+        int lines = bLines();
+        if (lines > 0) {
+            printf("reading %d\n", lines);
+            char *line = bRead();
+            printf("'%s'\n", line);
+        }
+    }
+    return 0;
+}
+
+int a() {
     bInit();
     printf("%d\n", memcmp(glyphs[CHAR_h], &GLYPH_h, sizeof(GLYPH_h)));
     sInit();

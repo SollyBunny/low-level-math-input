@@ -4,49 +4,62 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <string.h>
+#include <sys/poll.h>
+#include <stdarg.h>
 
 #define FIFO_FILE_IN "./serial_in.fifo"
 #define FIFO_FILE_OUT "./serial_out.fifo"
 
-FILE *fifo_in;
+int term_fifo_in, term_fifo_out;
+fd_set term_fifo_in_read_fs;
+#define TERM_BUFFER_SIZE 1024
+char term_buffer[TERM_BUFFER_SIZE];
+
 
 int bTermLines() {
-    long originalPos = ftell(fifo_in);
-    int newlineCount = 0;
-    int c;
-    while ((c = fgetc(fifo_in)) != EOF) {
-        if (c == '\n') ++newlineCount;
+    if ((term_fifo_in = open(FIFO_FILE_IN, O_RDONLY | O_NONBLOCK)) < 0) {
+        close(term_fifo_in);
+        return 0;
     }
-    fseek(fifo_in, originalPos, SEEK_SET); // Move cursor back to original position
-    return newlineCount;
+    static ssize_t bytes_read;
+    bytes_read = read(term_fifo_in, term_buffer, 1);
+    close(term_fifo_in);
+    if (bytes_read < 1) return 0;
+    return 1;
 }
 #undef bLines
 #define bLines bTermLines
 
 char* bTermRead() {
-    char *line;
-    ssize_t n = 512;
-    ssize_t res = getline(&line, &n, fifo_in);
-    if (res <= 0) {
-        free(line);
+    return NULL;
+    if ((term_fifo_in = open(FIFO_FILE_IN, O_RDONLY)) < 0) {
+        printf("fail\n");
+        close(term_fifo_in);
         return NULL;
     }
-    if (line == NULL) return NULL;
+    static ssize_t bytes_read;
+    bytes_read = read(term_fifo_in, term_buffer, TERM_BUFFER_SIZE);
+    close(term_fifo_in);
+    if (bytes_read < 1) return NULL;
+    return term_buffer;
 }
 #undef bRead
 #define bRead bTermRead
 
-void bTermWrite(char* line) {
-    int fd;
-    // Open FIFO for writing
-    if ((fd = open(FIFO_FILE_OUT, O_WRONLY)) < 0) {
-        perror("open");
-        exit(1);
+void bTermWrite(char* fmt, ...) {
+    if ((term_fifo_out = open(FIFO_FILE_OUT, O_WRONLY | O_NONBLOCK)) < 0) {
+        return;
     }
-    // Write line to FIFO
-    write(fd, line, strlen(line));
-    close(fd);
+    static int n;
+    va_list args;
+    va_start(args, fmt);
+    n = vsnprintf(term_buffer, TERM_BUFFER_SIZE, fmt, args);
+    va_end(args);
+    write(term_fifo_out, term_buffer, n);
+    close(term_fifo_out);
 }
 #undef bWrite
 #define bWrite bTermWrite
@@ -54,27 +67,23 @@ void bTermWrite(char* line) {
 void bTermOpenFIFO(const char* path) {
     struct stat buf;
     if (stat(path, &buf) != 0) {
-        perror("stat");
-        exit(1);
+        if (mkfifo(path, 0666) < 0) {
+            perror("mkfifo");
+            exit(1);
+        }
+        return;
     }
     if (S_ISFIFO(buf.st_mode)) {
         return;
-    }
-    if (mkfifo(path, 0666) < 0) {
-        perror("mkfifo");
+    } else {
+        perror("not fifo");
         exit(1);
     }
 }
 
 void bTermInit() {
-    
 	bTermOpenFIFO(FIFO_FILE_IN);
     bTermOpenFIFO(FIFO_FILE_OUT);
-    return;
-    if ((fifo_in = fopen(FIFO_FILE_IN, "r")) < 0) {
-        perror("fopen");
-        exit(1);
-    }
 }
 #undef bInit
 #define bInit bTermInit
