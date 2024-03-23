@@ -1,18 +1,25 @@
 
 build_pc:
-	$(MAKE) SCREEN=term BRIDGE=term build/llmi_pc
+	$(MAKE) SCREEN=term BRIDGE=term INPUT=term build/llmi_pc
+
+build_pc_debug:
+	$(MAKE) SCREEN=term BRIDGE=term INPUT=term build/llmi_debug
 
 build_esp32:
-	$(MAKE) SCREEN=ILI9341 BRIDGE=serial SERIAL=arduino build/llmi_mc
+	$(MAKE) SCREEN=ILI9341 BRIDGE=arduino SERIAL=arduino INPUT=arduino build/llmi_mc
+
+build/llmi_debug: src/main.c
+	gcc src/main.c -o build/llmi_debug_$(SCREEN)_$(BRIDGE) -I src -DSCREEN_$(SCREEN) -DBRIDGE_$(BRIDGE) -DINPUT_$(INPUT) -ggdb3 -fsanitize=address -DDEBUG
 
 build/llmi_pc: src/main.c
-	gcc src/main.c -o build/llmi_pc_$(SCREEN)_$(BRIDGE) -I src -DSCREEN_$(SCREEN) -DBRIDGE_$(BRIDGE)
+	gcc src/main.c -o build/llmi_pc_$(SCREEN)_$(BRIDGE) -I src -DSCREEN_$(SCREEN) -DBRIDGE_$(BRIDGE) -DINPUT_$(INPUT)
 
 build/llmi_mc: build/arduino.ino_
-	gcc build/arduino.c -o build/llmi_mc_$(SCREEN)_$(BRIDGE) -I src -DSCREEN_$(SCREEN) -DBRIDGE_$(BRIDGE)
+	cat build/arduino.ino | xclip -selection clipboard
+	@echo "Copied to clipboard"
 
 build/arduino.ino_: ./combine_arduino.py
-	python ./combine_arduino.py -DDEVICE -DSCREEN_$(SCREEN) -DBRIDGE_$(BRIDGE)
+	python ./combine_arduino.py -DSCREEN_$(SCREEN) -DBRIDGE_$(BRIDGE) -DINPUT_$(INPUT)
 
 font:
 	$(MAKE) -C ./src/font/

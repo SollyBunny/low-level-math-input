@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include "../screen.h"
-#include "../color.h"
+#include "../../color.h"
 
 void sTermFlush() {
     fflush(stdout);

@@ -17,6 +17,7 @@ r_bracket ]
 gt <
 ls >
 semicolon ;
+colon :
 comma ,
 period .
 question_mark ?
@@ -24,6 +25,7 @@ single_quote '
 double_quote "
 equals =
 exclamation !
+underscore _
 
 0 0
 1 1

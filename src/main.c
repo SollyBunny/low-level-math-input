@@ -1,81 +1,115 @@
 
+#include <stdint.h>
 #include <stdio.h>
-#include <time.h>
+#include <signal.h>
+#include <unistd.h>
 
-#ifdef DEVICE_ILI9341
-    #include "screen/ILI9341.h"
-#else
-    #include "screen/term.h"
-#endif
-#ifdef BRIDGE_arduino
-    #include "bridge/arduino.h"
-#else
-    #include "bridge/term.h"
-#endif
+#include "devices/screen.h"
+#include "devices/bridge.h"
+#include "devices/input.h"
 
-#include "screen.h"
-#include "bridge.h"
 #include "font.h"
 #include "glyph.h"
 
-void msleep(long msec) {
-    struct timespec ts;
-    ts.tv_sec = msec / 1000;
-    ts.tv_nsec = (msec % 1000) * 1000000;
-    nanosleep(&ts, &ts);
+#define msleep(msec) usleep(msec * 1000)
+
+void mainexit();
+void maininit();
+
+void onSerial(char *data);
+void onInput(uint8_t key);
+
+void render();
+
+static gstring *input;
+
+void render() {
+    sColor(0);
+    sClear();
+    sColor(0x0F0F);
+    upos x = 1;
+    upos y = 1;
+    sText(&x, &y, input);
+    sFlush();
 }
 
-#define FIFO_NAME FIFO_FILE_IN
-#define BUFFER_SIZE 1024
+void onSerial(char* data) {
+    bWrite("Got '%s'\n", data);
+    if (data[0]) {
+        uint8_t key = data[0];
+        if (key == 127) {
+            bWrite("Removed char\n");
+            gEndPop(input);
+        } else {
+            gEndAdd(input, (gchar)key);
+        }
+        render();
+    }
+}
+
+void onInput(uint8_t key) {
+    bWrite("Got char '%c' (%d)\n", key, key);
+    sColor(0xffff);
+    sClear();
+    sFlush();
+    // if (key == 127) {
+    //     bWrite("Removed char\n");
+    //     gEndPop(input);
+    // } else {
+    //     gEndAdd(input, (gchar)key);
+    // }
+    render();
+}
+
+void mainexit() {
+    bWrite("Exiting\n");
+    bDeinit();
+    sDeinit();
+    iDeinit();
+    exit(0);
+}
+
+void maininit() {
+    bWrite("Hello 0\n");
+    input = gCreate();
+    gAlloc(input, 256);
+    gEndAdd(input, 'a');
+    // gEndAdd(input, 'l');
+    // gEndAdd(input, 'l');
+    // gEndAdd(input, 'o');
+    // gEndAdd(input, '!');
+    render();
+    bWrite("Hello 3\n");
+}
 
 int main() {
     bInit();
     sInit();
+    iInit();
+    // sClear();
+    #ifdef INPUT_TERM
+        signal(SIGINT, mainexit);
+    #endif
+    bWrite("Started\n");
+    maininit();
+    int i = 0;
     while (1) {
+        i += 1;
+        if (i % 10 == 0) {
+            bWrite("Im still alive %d\n", i);
+        }
         msleep(100);
         int lines = bLines();
         if (lines > 0) {
             char *line = bRead();
-            if (!line) continue;
-            bWrite("Writing '%s'\n", line);
-            gchar *gline = gstring(line);
-            sColor(0);
-            sClear();
-            sColor(0x0F0F);
-            upos x = 1;
-            upos y = 1;
-            sText(&x, &y, gline);
-            sFlush();
-            free(gline);
+            if (line) {
+                onSerial(line);
+            }
+        }
+        uint8_t key = iRead();
+        if (key) {
+            onInput(key);
         }
     }
     return 0;
-}
-
-int a() {
-    bInit();
-    printf("%d\n", memcmp(glyphs[CHAR_h], &GLYPH_h, sizeof(GLYPH_h)));
-    sInit();
-    sColor(0xF00F);
-    sLine(0, 2, 5, 100);
-    sColor(0x0F0F);
-    upos x = 10;
-    upos y = 2;
-    gchar text[] = { 'h', 'e', 'l', 'l', 'o', 0 };
-    // sGlyph(&x, &y, CHAR_h);
-    sText(&x, &y, text);
-    x = 10;
-    sText(&x, &y, text);
-    sFlush();
-    bWrite("Hello world\n");
-    while (1) {
-        int lines = bLines();
-        if (lines > 0) {
-            sDeinit();
-            printf("%s\n", bRead());
-            exit(1);
-        }
-        msleep(100);
-        bWrite("Hello world\n");
-    }
 }

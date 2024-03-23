@@ -7,6 +7,6 @@
 In hex
 0xRGBA
 */
-typedef uint16_t Color;
+#define Color uint16_t
 
 #endif

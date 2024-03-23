@@ -7,14 +7,13 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <string.h>
-#include <sys/poll.h>
 #include <stdarg.h>
 
 #define FIFO_FILE_IN "./serial_in.fifo"
 #define FIFO_FILE_OUT "./serial_out.fifo"
 
-int term_fifo_in, term_fifo_out;
-fd_set term_fifo_in_read_fs;
+static int term_fifo_in, term_fifo_out;
+static fd_set term_fifo_in_read_fs;
 #define TERM_BUFFER_SIZE 1024
 
 int bTermLines() {
@@ -65,7 +64,7 @@ void bTermWrite(char* fmt, ...) {
 #undef bWrite
 #define bWrite bTermWrite
 
-void bTermOpenFIFO(const char* path) {
+static void bTermOpenFIFO(const char* path) {
     struct stat buf;
     if (stat(path, &buf) != 0) {
         if (mkfifo(path, 0666) < 0) {

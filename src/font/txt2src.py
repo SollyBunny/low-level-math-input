@@ -31,13 +31,13 @@ data_txt.append([
     []
 ])
 
-out_data = ""
+out_data = ["NULL" for i in range(1 + max(data_txt, key = lambda c: int(c[1]))[1])]
 out_defines = ""
 for c in data_txt:
     out_defines += f"#define CHAR_{c[0]} {c[1]}\n"
     data = ",".join(str(j) for j in c[3])
     out_defines += f"struct Glyph GLYPH_{c[0]} = {{.w={int(c[2][0]) + int(c[2][2]) + int(c[2][3])}, .h={int(c[2][1]) + int(c[2][4]) + int(c[2][5])}, .padleft={c[2][2]}, .padright={c[2][3]}, .padtop={c[2][4]}, .padbottom={c[2][5]}, .b={{.w={c[2][0]}, .h={c[2][1]}, .data={{{data}}}}}}};\n"
-    out_data += f"[CHAR_{c[0]}] = &GLYPH_{c[0]},\n"
+    out_data[c[1]] =  f"&GLYPH_{c[0]}"
 
 with open("font.h", "w") as file:
     file.write(f"""#ifndef INCLUDE_FONT_H
@@ -47,7 +47,7 @@ with open("font.h", "w") as file:
 
 {out_defines}
 struct Glyph *glyphs[] = {{
-{out_data}
+{",".join(out_data)}
 }};
 
 #endif""")

@@ -1,8 +1,219 @@
-#ifndef INCLUDE_FONT_H
+#define SCREEN_ILI9341
+#define BRIDGE_arduino
+#define INPUT_arduino
+// Start ./src/main.c
+#include <stdint.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+// Start ./src/devices/screen.h
+#define INCLUDE_SCREEN_H_BASIC
+#include <stdint.h>
+#define upos uint16_t
+#define pos int16_t
+upos sWidth = 0;
+upos sHeight = 0;
+// Start ./src/devices/screen/ILI9341.h
+#include <stdint.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+// Ignored ./src/devices/screen/../screen.h
+// Start ./src/devices/screen/../../color.h
+#define INCLUDE_COLOR_H
+#include <stdint.h>
+/*
+In hex
+0xRGBA
+*/
+#define Color uint16_t
+// End ./src/devices/screen/../../color.h
+/*
+ILI9341 Screen pins -> ES32 S3 pins
+VCC -> 3V
+GND -> GND
+CS -> 6
+RESET -> 5
+DC -> 4
+SDI(MOSI) -> 11
+SCK -> 12
+LED -> 3V
+SDD(MISO) -> 13
+T_CLK
+T_CS
+T_DIN
+T_DO
+T_IRQ
+*/
+	#define TFT_CS 6
+	#define TFT_RST 5
+	#define TFT_DC 4
+	#define TFT_ROTATION 3
+#define TFT_DETECT_CONNECTED 13
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+Color tftcolor = 0;
+int tftwritten = 0;
+int tftneedreset = 0;
+void sILI9341Init();
+void sILI9341Flush() {
+	if (tftneedreset) {
+		sILI9341Init();
+		tftneedreset = 0;
+	} else if (digitalRead(TFT_DETECT_CONNECTED) == 0) {
+		tftneedreset = 1;
+	}
+	if (tftwritten) {
+		tft.endWrite();
+		tftwritten = 0;
+	}
+	tft.flush();
+	
+}
+#undef sFlush
+#define sFlush sILI9341Flush
+#define sILI9341Color(col) { tftcolor = col; }
+#undef sColor
+#define sColor sILI9341Color
+void sILI9341Clear() {
+	if (tftwritten) {
+		tft.endWrite();
+		tftwritten = 0;
+	}
+    tft.fillScreen(tftcolor);
+}
+#undef sClear
+#define sClear sILI9341Clear
+void sILI9341Point(uint16_t x, uint16_t y) {
+    if (tftwritten == 0) {
+		tft.startWrite();
+		tftwritten = 1;
+	}
+	tft.writePixel(x, y, tftcolor);
+}
+#undef sPoint
+#define sPoint sILI9341Point
+void sILI9341Init() {
+	tft.flush();
+	tft.begin();
+	tft.setRotation(TFT_ROTATION);
+	tft.fillScreen(0);
+	tft.flush();
+}
+#undef sInit
+#define sInit sILI9341Init
+void sILI9341Deinit() {
+	sFlush();
+}
+#undef sDeinit
+#define sDeinit sILI9341Deinit
+// End ./src/devices/screen/ILI9341.h
+#define INCLUDE_SCREEN_H_ADV
+// Start ./src/devices/../font.h
 #define INCLUDE_FONT_H
-
-#include "glyph.h"
-
+// Start ./src/devices/../glyph.h
+#define INCLUDE_GLYPH_H
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+// Start ./src/devices/../bitmap.h
+#define INCLUDE_BITMAP_H
+#include <stdint.h>
+struct Bitmap {
+    uint8_t w;
+    uint8_t h;
+    uint32_t data[36];
+};
+// End ./src/devices/../bitmap.h
+#define gchar uint16_t
+#define gsize uint16_t
+struct Glyph {
+    uint8_t w;
+    uint8_t h;
+    uint8_t padleft;
+    uint8_t padright;
+    uint8_t padtop;
+    uint8_t padbottom;
+    struct Bitmap b;
+};
+struct gString {
+	gchar *str;
+	gsize len;
+	gsize alloc;
+};
+#define gstring struct gString
+void gAlloc(gstring *s, gsize len) {
+	if (s->alloc > len) return;
+	{
+		len += (len == 0);
+		len--;
+		len |= len >> 1;
+		len |= len >> 2;
+		len |= len >> 4;
+		len |= len >> 8;
+		len |= len >> 16;
+		len++;
+	}
+	if (s->alloc > len) return;
+	s->alloc = len;
+	s->str = (gchar*)realloc(s->str, sizeof(gchar) * s->alloc + 1);
+}
+gstring *cstring2gstring(const char* s) {
+    if (s == NULL) return NULL;
+	gstring *g = (gstring*)malloc(sizeof(gstring));
+	gsize l = strlen(s);
+	g->len = l;
+	gAlloc(g, l);
+    for (gsize i = 0; i < l; ++i) {
+        g->str[i] = s[i];
+    }
+    return g;
+}
+#define gstring2cstring(s) ((s)->str)
+gstring *gCreate() {
+	gstring *s = (gstring*)malloc(sizeof(gstring));
+	s->str = (gchar*)malloc(sizeof(gchar) * 8);
+	s->str[0] = '\0';
+	s->len = 0;
+	s->alloc = 8;
+	return s;
+}
+void gFree(gstring *s) {
+	if (!s) return;
+	if (s->str) free(s->str);
+	s->len = 0;
+	s->str = NULL;
+	free(s);
+}
+gchar gPop(gstring *s, gsize n) {
+    if (s->len <= n) return 0;
+    gchar out = s->str[n];
+    for (gsize i = n; i < s->len; ++i) {
+        s->str[i] = s->str[i + 1];
+    }
+    return out;
+}
+void gInsert(gstring *s, gchar c, gsize n) {
+    if (n >= s->len) n = s->len;
+    s->len++;
+    gAlloc(s, s->len);
+    for (gsize i = s->len + 1; i > n + 1; ++i) {
+        s->str[i] = s->str[i - 1];
+    }
+    s->str[n] = c;
+}
+void gEndAdd(gstring *s, gchar c) {
+    s->len++;
+	gAlloc(s, s->len);
+	s->str[s->len - 1] = c;
+	s->str[s->len] = '\0';
+}
+gchar gEndPop(gstring *s) {
+	if (s->len == 0) return 0;
+	s->len--;
+	gchar out = s->str[s->len];
+	s->str[s->len] = '\0';
+	return out;
+}
+// End ./src/devices/../glyph.h
 #define CHAR_exclamation 33
 struct Glyph GLYPH_exclamation = {.w=27, .h=31, .padleft=8, .padright=16, .padtop=7, .padbottom=0, .b={.w=3, .h=24, .data={7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,0,0,0,0,0,7,7,7}}};
 #define CHAR_double_quote 34
@@ -281,9 +492,257 @@ struct Glyph GLYPH_omega = {.w=21, .h=31, .padleft=2, .padright=2, .padtop=13, .
 struct Glyph GLYPH_space = {.w=58, .h=0, .padleft=18, .padright=40, .padtop=0, .padbottom=0, .b={.w=0, .h=0, .data={}}};
 #define CHAR_tab 9
 struct Glyph GLYPH_tab = {.w=112, .h=0, .padleft=72, .padright=40, .padtop=0, .padbottom=0, .b={.w=0, .h=0, .data={}}};
-
 struct Glyph *glyphs[] = {
 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&GLYPH_tab,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&GLYPH_space,&GLYPH_exclamation,&GLYPH_double_quote,NULL,NULL,&GLYPH_percent,&GLYPH_ampersand,&GLYPH_single_quote,&GLYPH_l_parens,&GLYPH_r_parens,&GLYPH_asterisk,&GLYPH_plus,&GLYPH_comma,&GLYPH_minus,&GLYPH_period,NULL,&GLYPH_0,&GLYPH_1,&GLYPH_2,&GLYPH_3,&GLYPH_4,&GLYPH_5,&GLYPH_6,&GLYPH_7,&GLYPH_8,&GLYPH_9,NULL,&GLYPH_semicolon,&GLYPH_gt,&GLYPH_equals,&GLYPH_ls,&GLYPH_question_mark,NULL,&GLYPH_A,&GLYPH_B,&GLYPH_C,&GLYPH_D,&GLYPH_E,&GLYPH_F,&GLYPH_G,&GLYPH_H,&GLYPH_I,&GLYPH_J,&GLYPH_K,&GLYPH_L,&GLYPH_M,&GLYPH_N,&GLYPH_O,&GLYPH_P,&GLYPH_Q,&GLYPH_R,&GLYPH_S,&GLYPH_T,&GLYPH_U,&GLYPH_V,&GLYPH_W,&GLYPH_X,&GLYPH_Y,&GLYPH_Z,&GLYPH_l_bracket,&GLYPH_backslash,&GLYPH_r_bracket,&GLYPH_caret,&GLYPH_underscore,NULL,&GLYPH_a,&GLYPH_b,&GLYPH_c,&GLYPH_d,&GLYPH_e,&GLYPH_f,&GLYPH_g,&GLYPH_h,&GLYPH_i,&GLYPH_j,&GLYPH_k,&GLYPH_l,&GLYPH_m,&GLYPH_n,&GLYPH_o,&GLYPH_p,&GLYPH_q,&GLYPH_r,&GLYPH_s,&GLYPH_t,&GLYPH_u,&GLYPH_v,&GLYPH_w,&GLYPH_x,&GLYPH_y,&GLYPH_z,&GLYPH_l_brace,&GLYPH_pipe,&GLYPH_r_brace,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&GLYPH_multiply,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&GLYPH_divide,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&GLYPH_ALPHA,&GLYPH_BETA,&GLYPH_GAMMA,&GLYPH_DELTA,&GLYPH_EPSILON,&GLYPH_ZETA,&GLYPH_ETA,&GLYPH_THETA,&GLYPH_IOTA,&GLYPH_KAPPA,&GLYPH_LAMBDA,&GLYPH_MU,&GLYPH_NU,&GLYPH_XI,&GLYPH_OMIKRON,&GLYPH_PI,&GLYPH_RHO,NULL,&GLYPH_SIGMA,&GLYPH_TAU,&GLYPH_UPSULON,&GLYPH_PHI,&GLYPH_HI,&GLYPH_PSI,&GLYPH_OMEGA,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&GLYPH_alpha,&GLYPH_beta,&GLYPH_gamma,&GLYPH_delta,&GLYPH_epsilon,&GLYPH_zeta,&GLYPH_eta,&GLYPH_theta,&GLYPH_iota,&GLYPH_kappa,&GLYPH_lambda,&GLYPH_mu,&GLYPH_nu,&GLYPH_xi,&GLYPH_omikron,&GLYPH_pi,&GLYPH_rho,NULL,&GLYPH_sigma,&GLYPH_tau,&GLYPH_upsulon,&GLYPH_phi,&GLYPH_hi,&GLYPH_psi,&GLYPH_omega
 };
-
-#endif
+// End ./src/devices/../font.h
+// Ignored ./src/devices/../glyph.h
+// Ignored ./src/devices/../bitmap.h
+void sDefaultLine(upos x1, upos y1, upos x2, upos y2) {
+    pos dx = x2 - x1;
+    pos dy = y2 - y1;
+    if (dy <= dx) {
+        pos d = dy - (dx / 2);
+        upos x = x1, y = y1;
+        sPoint(x, y);
+        while (x < x2) {
+            ++x;
+            if (d < 0) d = d + dy;
+            else {
+                d += (dy - dx);
+                ++y;
+            }
+            sPoint(x, y);
+        }
+    } else {
+        pos d = dx - (dy / 2);
+        upos x = x1, y = y1;
+        sPoint(x, y);
+        while (y < y2) { 
+            ++y;
+            if (d < 0) d = d + dx;
+            else { 
+                d += (dx - dy);
+                ++x;
+            }
+            sPoint(x, y);
+        }
+    }
+}
+#define sLine sDefaultLine
+void sDefaultBitmap(upos *x, upos *y, struct Bitmap *b) {
+    for (upos y1 = 0; y1 < b->h; ++y1) {
+        uint32_t data = b->data[y1];
+        if (data == 0) continue;
+        upos x1 = 0;
+        while (data) {
+            if (data & 1) {
+                sPoint(x1 + *x, y1 + *y);
+            }
+            data >>= 1;
+            x1 += 1;
+        }
+    }
+    *x += b->w;
+    *y += b->h;
+}
+#define sBitmap sDefaultBitmap
+void sDefaultGlyph(upos *x, upos *y, gchar c) {
+    struct Glyph *g = glyphs[c];
+    if (!g) return;
+    *x += g->padleft;
+    *y += g->padtop;
+    sBitmap(x, y, &g->b);
+    *x += g->padright;
+    *y += g->padtop;
+}
+#define sGlyph sDefaultGlyph
+void sDefaultText(upos *x, upos *y, gstring *text) {
+    upos ty;
+    upos my = *y;
+    for (gsize i = 0; i < text->len; ++i) {
+        ty = *y;
+        sGlyph(x, &ty, text->str[i]);
+        if (ty > my) my = ty;
+    }
+    *y = my;
+}
+#define sText sDefaultText
+// End ./src/devices/screen.h
+// Start ./src/devices/bridge.h
+#define INCLUDE_BRIDGE_H
+// Start ./src/devices/bridge/arduino.h
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+#define ARDUINO_BUFFER_SIZE 128
+int bArduinoLines() {
+	if (Serial.available() > 0) return 1;
+	return 0;
+}
+#undef bLines
+#define bLines bArduinoLines
+char* bArduinoRead() {
+    static char arduino_buffer[ARDUINO_BUFFER_SIZE];
+    static ssize_t bytes_read;
+    bytes_read = Serial.readBytesUntil('\n', arduino_buffer, ARDUINO_BUFFER_SIZE - 1);
+    if (bytes_read < 1) return NULL;
+    arduino_buffer[bytes_read] = '\0';
+    return arduino_buffer;
+}
+#undef bRead
+#define bRead bArduinoRead
+void bArduinoWrite(char* fmt, ...) {
+    static char arduino_buffer[ARDUINO_BUFFER_SIZE];
+    static int n;
+    va_list args;
+    va_start(args, fmt);
+    n = vsnprintf(arduino_buffer, ARDUINO_BUFFER_SIZE, fmt, args);
+    va_end(args);
+    Serial.write(arduino_buffer, n);
+}
+#undef bWrite
+#define bWrite bArduinoWrite
+void bArduinoInit() {
+	Serial.begin();
+}
+#undef bInit
+#define bInit bArduinoInit
+void bArduinoDeinit() {
+	Serial.end();
+}
+#undef bDeinit
+#define bDeinit bArduinoDeinit
+// End ./src/devices/bridge/arduino.h
+// End ./src/devices/bridge.h
+// Start ./src/devices/input.h
+#define INCLUDE_INPUT_H
+// Start ./src/devices/input/term.h
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
+static struct termios term_termios;
+void iTermDeinit() {
+    fcntl(STDIN_FILENO, F_SETFL, 0);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &term_termios);
+}
+#undef iDeinit
+#define iDeinit iTermDeinit
+void iTermInit() {
+    fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
+    struct termios raw;
+    tcgetattr(STDIN_FILENO, &term_termios);
+    tcgetattr(STDIN_FILENO, &raw);
+    raw.c_lflag &= ~(ECHO | ICANON);
+    raw.c_cc[VMIN] = 0;
+    raw.c_cc[VTIME] = 1;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+#undef iInit
+#define iInit iTermInit
+uint8_t iTermRead() {
+    uint8_t out = getchar();
+    if (out == 255) return 0;
+    return out;
+}
+#undef iRead
+#define iRead iTermRead
+// End ./src/devices/input/term.h
+// End ./src/devices/input.h
+// Ignored ./src/font.h
+// Ignored ./src/glyph.h
+#define msleep(msec) usleep(msec * 1000)
+void mainexit();
+void maininit();
+void onSerial(char *data);
+void onInput(uint8_t key);
+void render();
+static gstring *input;
+void render() {
+    sColor(0);
+    sClear();
+    sColor(0x0F0F);
+    upos x = 1;
+    upos y = 1;
+    sText(&x, &y, input);
+    sFlush();
+}
+void onSerial(char* data) {
+    bWrite("Got '%s'\n", data);
+    if (data[0]) {
+        uint8_t key = data[0];
+        if (key == 127) {
+            bWrite("Removed char\n");
+            gEndPop(input);
+        } else {
+            gEndAdd(input, (gchar)key);
+        }
+        render();
+    }
+}
+void onInput(uint8_t key) {
+    bWrite("Got char '%c' (%d)\n", key, key);
+    sColor(0xffff);
+    sClear();
+    sFlush();
+    // if (key == 127) {
+    //     bWrite("Removed char\n");
+    //     gEndPop(input);
+    // } else {
+    //     gEndAdd(input, (gchar)key);
+    // }
+    render();
+}
+void mainexit() {
+    bWrite("Exiting\n");
+    bDeinit();
+    sDeinit();
+    iDeinit();
+    exit(0);
+}
+void maininit() {
+    bWrite("Hello 0\n");
+    input = gCreate();
+    gAlloc(input, 256);
+    gEndAdd(input, 'a');
+    // gEndAdd(input, 'l');
+    // gEndAdd(input, 'l');
+    // gEndAdd(input, 'o');
+    // gEndAdd(input, '!');
+    render();
+    bWrite("Hello 3\n");
+}
+int main() {
+    bInit();
+    sInit();
+    iInit();
+    // sClear();
+    bWrite("Started\n");
+    maininit();
+    int i = 0;
+    while (1) {
+        i += 1;
+        if (i % 10 == 0) {
+            bWrite("Im still alive %d %d\n", i, digitalRead(TFT_DETECT_CONNECTED));
+        }
+        msleep(100);
+        int lines = bLines();
+        if (lines > 0) {
+            char *line = bRead();
+            if (line) {
+                onSerial(line);
+            }
+        }
+        uint8_t key = iRead();
+        if (key) {
+            onInput(key);
+        }
+    }
+    return 0;
+}
+// End ./src/main.c
+void setup() { main(); }
+void loop() {}

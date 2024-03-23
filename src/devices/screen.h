@@ -3,11 +3,17 @@
 
 #include <stdint.h>
 
-typedef uint16_t upos;
-typedef int16_t pos;
+#define upos uint16_t
+#define pos int16_t
 
 upos sWidth = 0;
 upos sHeight = 0;
+
+#ifdef SCREEN_ILI9341
+    #include "screen/ILI9341.h"
+#else
+    #include "screen/term.h"
+#endif
 
 #endif
 
@@ -15,9 +21,9 @@ upos sHeight = 0;
 #ifndef INCLUDE_SCREEN_H_ADV
 #define INCLUDE_SCREEN_H_ADV
 
-#include "font.h"
-#include "glyph.h"
-#include "bitmap.h"
+#include "../font.h"
+#include "../glyph.h"
+#include "../bitmap.h"
 
 #ifndef sLine
 void sDefaultLine(upos x1, upos y1, upos x2, upos y2) {
@@ -89,12 +95,12 @@ void sDefaultGlyph(upos *x, upos *y, gchar c) {
 #endif
 
 #ifndef sText
-void sDefaultText(upos *x, upos *y, gchar *text) {
+void sDefaultText(upos *x, upos *y, gstring *text) {
     upos ty;
     upos my = *y;
-    for (/* empty */; *text != '\0'; ++text) {
+    for (gsize i = 0; i < text->len; ++i) {
         ty = *y;
-        sGlyph(x, &ty, *text);
+        sGlyph(x, &ty, text->str[i]);
         if (ty > my) my = ty;
     }
     *y = my;

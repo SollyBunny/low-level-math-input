@@ -4,7 +4,7 @@
 #include <Adafruit_ILI9341.h>
 
 #include "../screen.h"
-#include "../color.h"
+#include "../../color.h"
 
 /*
 ILI9341 Screen pins -> ES32 S3 pins
@@ -32,6 +32,9 @@ T_IRQ
 #ifndef TFT_DC
 	#define TFT_DC 4
 #endif
+#ifndef TFT_ROTATION
+	#define TFT_ROTATION 3
+#endif
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
 Color tftcolor = 0;
@@ -40,7 +43,6 @@ int tftwritten = 0;
 void sILI9341Flush() {
 	if (tftwritten) {
 		tft.endWrite();
-		tft.startWrite();
 		tftwritten = 0;
 	}
 	tft.flush();
@@ -54,14 +56,21 @@ void sILI9341Flush() {
 #define sColor sILI9341Color
 
 void sILI9341Clear() {
+	if (tftwritten) {
+		tft.endWrite();
+		tftwritten = 0;
+	}
     tft.fillScreen(tftcolor);
 }
 #undef sClear
 #define sClear sILI9341Clear
 
 void sILI9341Point(uint16_t x, uint16_t y) {
-    tft.writePixel(x, y, tftcolor);
-	tftwritten = 1;
+    if (tftwritten == 0) {
+		tft.startWrite();
+		tftwritten = 1;
+	}
+	tft.writePixel(x, y, tftcolor);
 }
 #undef sPoint
 #define sPoint sILI9341Point
@@ -69,9 +78,9 @@ void sILI9341Point(uint16_t x, uint16_t y) {
 void sILI9341Init() {
 	tft.flush();
 	tft.begin();
+	tft.setRotation(TFT_ROTATION);
 	tft.fillScreen(0);
 	tft.flush();
-	tft.startWrite();
 }
 #undef sInit
 #define sInit sILI9341Init
